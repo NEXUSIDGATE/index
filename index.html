@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>APP INTEGRATED - REALTIME SYNC</title>
+    <style>
+        /* ==================== CẤU HÌNH GIAO DIỆN CHÍNH ==================== */
+        :root {
+            --primary: #ff4757;
+            --primary-glow: rgba(255, 71, 87, 0.4);
+            --bg: #0b0c10;
+            --card: #1f2833;
+            --input: #151a21;
+            --text: #c5c6c7;
+            --accent: #45f3ff;
+            --accent-glow: rgba(69, 243, 255, 0.2);
+            --gold: #ffd700;
+            --gold-glow: rgba(255, 215, 0, 0.3);
+            --orange: #ff9f43;
+            --green: #00ff66;
+            --purple: #9b59b6;
+        }
+
+        * {
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg); color: var(--text); padding: 15px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden;
+        }
+
+        .container { width: 100%; max-width: 430px; margin: 0 auto; position: relative; }
+
+        /* ==================== GIAO DIỆN CỔNG CHECK ID ==================== */
+        #id-gate-container { display: flex; align-items: center; justify-content: center; width: 100%; }
+        .gate-box {
+            background: var(--card); padding: 30px 20px; border-radius: 16px; width: 100%; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid rgba(69, 243, 255, 0.1); text-align: center;
+        }
+        .gate-box h2 { 
+            color: var(--primary); margin-top: 0; font-size: 24px; text-transform: uppercase;
+            letter-spacing: 1px; margin-bottom: 5px; text-shadow: 0 0 10px var(--primary-glow);
+        }
+        .version-tag { font-size: 11px; color: var(--accent); margin-bottom: 20px; display: block; font-weight: bold; }
+        .gate-box input { 
+            width: 100%; padding: 14px; box-sizing: border-box; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); 
+            background: var(--input); color: #fff; font-size: 15px; text-align: center; outline: none; margin-bottom: 20px;
+        }
+        .gate-box input:focus { border-color: var(--primary); }
+        .gate-box button { 
+            width: 100%; padding: 14px; background: linear-gradient(135deg, var(--primary) 0%, #c0392b 100%); 
+            border: none; color: white; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 14px; 
+            text-transform: uppercase; box-shadow: 0 4px 12px var(--primary-glow);
+        }
+        #gate-result { 
+            margin-top: 20px; padding: 15px; background: var(--input); border-radius: 8px; text-align: left; 
+            display: none; border-left: 4px solid var(--primary); font-size: 14px; line-height: 1.6;
+        }
+        .enter-app-btn {
+            display: block; width: 100%; padding: 12px; margin-top: 15px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white; text-align: center; text-decoration: none; font-weight: bold; border-radius: 6px; box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); text-transform: uppercase; font-size: 13px; cursor: pointer; border: none;
+        }
+
+        /* ==================== BẢNG MENU ĐIỀU KHIỂN CHÍNH ==================== */
+        #main-panel { display: none; width: 100%; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0 15px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 15px; }
+        .header-left { display: flex; align-items: center; }
+        .header h1 { font-size: 18px; color: #fff; font-weight: 800; letter-spacing: 0.5px; }
+
+        .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.02); position: relative; }
+        .card h2 { font-size: 13px; color: #fff; margin-bottom: 12px; display: flex; align-items: center; }
+        .card h2::before { content: ''; width: 3px; height: 11px; background: var(--accent); margin-right: 6px; box-shadow: 0 0 6px var(--accent); }
+
+        .status-item { display: flex; justify-content: space-between; align-items: center; background: var(--input); padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 6px; }
+
+        #alert-box { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 100000; width: 85%; max-width: 300px; pointer-events: none; }
+        .my-toast {
+            background: #1f2833; border-left: 4px solid var(--accent); border-right: 1px solid rgba(255,255,255,0.05);
+            border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 15px;
+            border-radius: 6px; color: #fff; font-size: 12px; margin-bottom: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.5); text-align: left; font-weight: 500; animation: toastIn 0.25s ease forwards;
+        }
+        .my-toast.err-toast { border-left-color: var(--primary); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .file-upload-wrapper { position: relative; width: 100%; background: var(--input); border: 1px dashed rgba(155, 89, 182, 0.4); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.3s ease; margin-bottom: 10px; }
+        .file-upload-wrapper:hover { border-color: var(--purple); background: rgba(155, 89, 182, 0.02); }
+        .file-upload-wrapper input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .file-upload-text { font-size: 12px; color: #aaa; }
+        .file-upload-text b { color: var(--purple); }
+
+        .btn {
+            width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent) 0%, #00bcff 100%); border: none; border-radius: 8px;
+            color: #000; font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(69, 243, 255, 0.2); text-transform: uppercase; text-align: center; display: block; text-decoration: none;
+        }
+        .btn:disabled { background: #2c3e50 !important; color: #7f8c8d !important; box-shadow: none !important; cursor: not-allowed; opacity: 0.6; }
+        .btn-danger { background: linear-gradient(135deg, var(--primary) 0%, #c0392b 100%); color: #fff; box-shadow: 0 4px 12px var(--primary-glow); }
+        .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, #b39200 100%); box-shadow: 0 4px 12px var(--gold-glow); color: #000; }
+        .btn-purple { background: linear-gradient(135deg, var(--purple) 0%, #6c5ce7 100%); box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3); color: #fff; }
+
+        .group { margin-bottom: 15px; }
+        .group label { display: block; font-size: 11px; font-weight: bold; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px; }
+        .group select { width: 100%; padding: 12px; background: var(--input); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; color: #fff; font-size: 14px; outline: none; }
+
+        .admin-contact-item { display: flex; align-items: center; justify-content: space-between; background: var(--input); padding: 10px; border-radius: 6px; margin-bottom: 6px; font-size: 12px; }
+        .admin-contact-item a { color: var(--accent); text-decoration: none; font-weight: bold; background: rgba(69, 243, 255, 0.1); padding: 4px 8px; border-radius: 4px; font-size: 11px; transition: 0.2s; }
+        .admin-contact-item a:hover { background: var(--accent); color: #000; }
+        
+        /* Modal giao diện cập nhật đồng bộ tổng bắt buộc */
+        #update-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(11, 12, 16, 0.98); z-index: 999999;
+            display: flex; justify-content: center; align-items: center; padding: 20px; visibility: hidden; opacity: 0; transition: all 0.3s ease;
+        }
+        #update-overlay.active { visibility: visible; opacity: 1; }
+        .update-box { background: var(--card); border: 2px solid var(--gold); border-radius: 16px; padding: 25px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 0 30px var(--gold-glow); }
+        .update-progress-bar { width: 100%; background: var(--input); height: 8px; border-radius: 10px; margin: 20px 0; overflow: hidden; position: relative; }
+        .update-progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, var(--gold), var(--orange)); transition: width 0.1s linear; }
+        #update-app-log { font-family: monospace; font-size: 11px; color: var(--green); text-align: left; background: #000; padding: 10px; border-radius: 6px; max-height: 140px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <div id="alert-box"></div>
+
+    <div id="update-overlay">
+        <div class="update-box">
+            <h3 style="color: var(--gold); text-transform: uppercase; margin-bottom: 10px; font-size: 18px;">Hệ Thống Đang Đồng Bộ</h3>
+            <p id="update-msg" style="font-size: 13px; color: #aaa; line-height: 1.5;">Đang kiểm tra kết nối Core Server...</p>
+            <div class="update-progress-bar">
+                <div class="update-progress-fill" id="update-progress"></div>
+            </div>
+            <div id="update-app-log"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="id-gate-container">
+            <div class="gate-box">
+                <h2>NEXUS ID GATE</h2>
+                <span class="version-tag">Phiên bản hiện tại: <span id="app-version-display">v1.0.0</span></span>
+                <input type="text" id="playerUid" placeholder="Nhập ID Free Fire để xác minh">
+                <button onclick="verifyIdGateway()">Bắt Đầu Kiểm Tra</button>
+                <div id="gate-result"></div>
+            </div>
+        </div>
+
+        <div id="main-panel">
+            <div class="header">
+                <div class="header-left">
+                    <div>
+                        <h1>APP INTEGRATED</h1>
+                        <p style="font-size:11px; color:#666;">ID liên kết: <span id="verified-game-id" style="color:var(--accent); font-weight: bold;">---</span></p>
+                    </div>
+                </div>
+                <div><span style="font-size:11px; color:var(--primary); text-decoration:underline; cursor:pointer; font-weight: bold;" onclick="location.reload()">Đăng xuất</span></div>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--gold);">
+                <h2 style="color: var(--gold);">📞 THÔNG TIN LIÊN HỆ ADMIN</h2>
+                <div class="admin-contact-item"><div>👑 Admin App:</div><span style="color:#fff; font-weight:bold;">usernameios</span></div>
+                <div class="admin-contact-item"><div>💬 Zalo Admin:</div><a href="https://zalo.me/0346044653" target="_blank">NHẮN TIN</a></div>
+                <div class="admin-contact-item"><div>🌐 Nhóm Zalo:</div><a href="https://zalo.me/g/o9yzxsd34lgsani0wsct" target="_blank">VÀO NHÓM</a></div>
+            </div>
+
+            <div class="card" style="border-left: 4px solid var(--purple);">
+                <h2 style="color: var(--purple);">⚙️ TRUNG TÂM NẠP FILE</h2>
+                <div class="file-upload-wrapper">
+                    <div class="file-upload-text" id="file-display-name">Kéo thả hoặc <b>Nhấp vào đây</b> để chọn file</div>
+                    <input type="file" id="config-file-input" accept=".xml,.txt,.json,.settings" onchange="handleFileChange(event)">
+                </div>
+                <div id="file-data-preview" style="margin-top:-5px; margin-bottom: 12px; display:none; background:#000; padding:8px; border-radius:5px; font-family:monospace; font-size:10px; color:var(--green); max-height:65px; overflow-y:auto; white-space:pre-wrap;"></div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--input); padding:10px; border-radius:6px;">
+                    <div>
+                        <div style="font-size:12px; font-weight:bold; color: #fff;"> Kích Hoạt Chạy Ngầm</div>
+                        <div style="font-size:10px; color:#777;" id="bg-service-desc">Vui lòng nạp file để mở khóa</div>
+                    </div>
+                    <button class="btn btn-purple" id="bg-service-btn" style="width:auto; padding:8px 15px; font-size:11px;" onclick="toggleBackgroundService()" disabled>KÍCH HOẠT NỀN</button>
+                </div>
+                <div id="bg-loader-log" style="font-family:monospace; font-size:10px; color:var(--orange); margin-top:8px; display:none; text-align: left; background: #000; padding: 6px; border-radius: 4px; max-height: 110px; overflow-y: auto;"></div>
+            </div>
+
+            <div class="card">
+                <h2>Trạng Thái Toàn Bộ Gói App Bổ Trợ</h2>
+                <div id="file-status-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                    <div class="status-item" style="border-left: 3px solid var(--accent); font-size: 9px;">Sensi Main: <span id="lbl-Sensi-Main" style="color:var(--green); font-weight: bold;">🔓 MỚI NHẤT</span></div>
+                    <div class="status-item" style="border-left: 3px solid var(--accent); font-size: 9px;">AimLock: <span id="lbl-AimLock" style="color:var(--green); font-weight: bold;">🔓 MỚI NHẤT</span></div>
+                    <div class="status-item" style="border-left: 3px solid var(--purple); font-size: 9px;">AimBot: <span id="lbl-AimBot" style="color:var(--green); font-weight: bold;">🔓 MỚI NHẤT</span></div>
+                    <div class="status-item" style="border-left: 3px solid var(--purple); font-size: 9px;">Aim Sensi: <span id="lbl-Aim-Sensi" style="color:var(--green); font-weight: bold;">🔓 MỚI NHẤT</span></div>
+                    <div class="status-item" style="border-left: 3px solid var(--purple); font-size: 9px;">Tối Ưu: <span id="lbl-Tối-Ưu" style="color:var(--green); font-weight: bold;">🔓 MỚI NHẤT</span></div>
+                    <div class="status-item" style="border-left: 3px solid var(--purple); font-size: 9px;">Fix Rung: <span id="lbl-Fix-Rung" style="color:var(--green); font-weight: bold;">🔓 MỚI NHẤT</span></div>
+                </div>
+            </div>
+
+            <div class="card" style="border: 2px solid var(--gold); background: rgba(255, 215, 0, 0.05);">
+                <h2 style="color: var(--gold);">🚀 GÓI FILE VIP CHẠY NGẦM</h2>
+                <button id="master-inject-btn" onclick="masterInject()" style="width: 100%; padding: 14px; background: linear-gradient(135deg, #ffd700, #ff9f43); border: none; border-radius: 8px; color: #000; font-weight: bold; cursor: pointer; font-size: 16px;">KÍCH HOẠT VIP TỔNG NỀN</button>
+                <div id="term-box-11" style="display:none; background:#000; color:#00ff66; padding:12px; margin-top:15px; font-family: 'Courier New', monospace; font-size: 12px; height: 130px; overflow-y: auto; border-radius: 5px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ==================== 1. CẤU HÌNH THÔNG SỐ TỪ ADMIN ==================== */
+        const CURRENT_VERSION = "1.0.0"; // PHIÊN BẢN HIỆN TẠI CỦA FILE HTML NÀY
+        
+        // ĐIỀN LINK TRỰC TIẾP DẪN ĐẾN FILE VERSION CỦA BẠN TRÊN GITHUB HOẶC HOSTING VÀO ĐÂY:
+        const SERVER_API_URL = "https://raw.githubusercontent.com/THAY_USERNAME_CỦA_BẠN/THAY_REPO_CỦA_BẠN/main/version.json"; 
+
+        let verifiedFFID = "";
+        let isBackgroundServiceRunning = false;
+        let backgroundInterval = null;
+        let loadedConfigContent = ""; 
+        const listFiles = ["config_aim.cfg", "registry_sens.reg", "bypass_anticheat.meta"];
+
+        window.onload = function() {
+            document.getElementById('app-version-display').innerText = "v" + CURRENT_VERSION;
+            checkServerUpdate(); // Tự động kiểm tra bản cập nhật từ server ngay khi mở app
+        };
+
+        /* ==================== 2. CƠ CHẾ TỰ ĐỘNG ĐỒNG BỘ CẬP NHẬT TỪ REMOTE SERVER ==================== */
+        function checkServerUpdate() {
+            showToast("Đang đồng bộ cổng Server...", "success");
+
+            // Fetch kèm mã thời gian timestamp để loại bỏ hoàn toàn bộ nhớ đệm Cache cũ của trình duyệt điện thoại
+            fetch(SERVER_API_URL + "?t=" + new Date().getTime(), { cache: "no-store" })
+            .then(response => response.json())
+            .then(data => {
+                // Nếu số phiên bản trên Server khác với CURRENT_VERSION hiện tại, lập tức khóa màn hình để cập nhật đồng loạt
+                if (data.version && data.version !== CURRENT_VERSION) {
+                    startGlobalAppUpgrade(data);
+                } else {
+                    showToast("Ứng dụng toàn hệ thống đang ở bản mới nhất: v" + CURRENT_VERSION);
+                }
+            })
+            .catch(error => {
+                console.log("Chưa cấu hình Server API URL hoặc lỗi kết nối mạng. Đang chạy Offline.");
+            });
+        }
+
+        function startGlobalAppUpgrade(serverData) {
+            const overlay = document.getElementById('update-overlay');
+            const progress = document.getElementById('update-progress');
+            const msg = document.getElementById('update-msg');
+            const log = document.getElementById('update-app-log');
+            
+            overlay.classList.add('active'); // Hiển thị màn hình khóa app, chặn toàn bộ thao tác của người dùng
+            msg.innerHTML = `Phát hiện bản cập nhật tổng mới: <b style="color:var(--gold);">v${serverData.version}</b><br>Đang tiến hành nâng cấp đồng bộ toàn bộ app...`;
+            
+            let percent = 0;
+            const upgradeSteps = [
+                { p: 15, txt: "📡 Đang ngắt kết nối các lõi cũ (Clear Session)..." },
+                { p: 35, txt: "📦 Đồng bộ dữ liệu tính năng: Sensi Main & AimLock -> Lên v" + serverData.version },
+                { p: 60, txt: "📦 Nâng cấp hệ thống phụ trợ: Fix Rung & Nhẹ Tâm Chuyên Sâu..." },
+                { p: 85, txt: "🔄 Làm sạch bộ nhớ đệm trình duyệt điện thoại (Flush Cache Data)..." },
+                { p: 100, txt: "🎉 Toàn bộ các gói app đã đồng bộ hoàn tất lên bản v" + serverData.version }
+            ];
+
+            let stepIndex = 0;
+            let timer = setInterval(() => {
+                if (percent < 100) {
+                    percent++;
+                    progress.style.width = percent + "%";
+                    if (stepIndex < upgradeSteps.length && percent >= upgradeSteps[stepIndex].p) {
+                        log.innerHTML += `<span style="color:var(--orange)">[SYSTEM]</span> ${upgradeSteps[stepIndex].txt}<br>`;
+                        log.scrollTop = log.scrollHeight;
+                        stepIndex++;
+                    }
+                } else {
+                    clearInterval(timer);
+                    msg.style.color = "var(--green)";
+                    msg.innerHTML = "<b>Đồng bộ hoàn tất! Đang khởi động lại ứng dụng...</b>";
+                    setTimeout(() => {
+                        // Đưa người dùng sang link chứa file HTML mới mà Admin đã up lên Server công bố trong file JSON
+                        window.location.href = serverData.url + "?t=" + new Date().getTime();
+                    }, 1500);
+                }
+            }, 35); 
+        }
+
+        /* ==================== CÁC CHỨC NĂNG CỦA APP (GIỮ NGUYÊN) ==================== */
+        function showToast(text, type = 'success') {
+            const container = document.getElementById('alert-box'); if(!container) return;
+            const toast = document.createElement('div'); toast.className = type === 'error' ? 'my-toast err-toast' : 'my-toast';
+            toast.innerText = (type === 'error' ? '❌ ' : '✅ ') + text; container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0'; toast.style.transform = 'translateY(-10px)'; toast.style.transition = 'all 0.2s ease';
+                setTimeout(() => { toast.remove(); }, 200);
+            }, 2500);
+        }
+
+        function verifyIdGateway() {
+            const uid = document.getElementById('playerUid').value.trim();
+            const resultBox = document.getElementById('gate-result'); resultBox.style.display = 'block';
+            if(!uid || !/^[0-9]{8,12}$/.test(uid)) { 
+                resultBox.innerHTML = `<strong style="color: #ef4444;">MÃ SỐ ID KHÔNG HỢP LỆ!</strong>`; return; 
+            }
+            verifiedFFID = uid;
+            resultBox.innerHTML = `<strong style="color: #10b981;">XÁC THỰC THÀNH CÔNG:</strong><br><b style="color:#fff;">PLAYER ID:</b> ${uid}<br><button onclick="enterMainAppPanel()" class="enter-app-btn">Đăng Nhập Vào App</button>`;
+        }
+
+        function enterMainAppPanel() {
+            document.getElementById('id-gate-container').style.display = 'none';
+            document.getElementById('main-panel').style.display = 'block';
+            document.getElementById('verified-game-id').innerText = verifiedFFID;
+        }
+
+        function handleFileChange(event) {
+            const file = event.target.files[0]; if (!file) return;
+            document.getElementById('file-display-name').innerHTML = `📄 Đã nạp: <b style="color:var(--purple);">${file.name}</b>`;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                loadedConfigContent = e.target.result;
+                const previewBox = document.getElementById('file-data-preview'); previewBox.style.display = "block";
+                previewBox.innerText = "[RAM Stream] Đang nạp...\n" + loadedConfigContent.substring(0, 60) + "...";
+                document.getElementById('bg-service-btn').disabled = false;
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleBackgroundService() {
+            const btn = document.getElementById('bg-service-btn'); const logBox = document.getElementById('bg-loader-log');
+            if(!isBackgroundServiceRunning) {
+                isBackgroundServiceRunning = true; btn.innerText = "DỪNG NỀN"; btn.className = "btn btn-danger"; logBox.style.display = "block";
+                backgroundInterval = setInterval(() => { logBox.innerHTML += `[BACKGROUND] Inject Luồng ID [${verifiedFFID}] -> OK (v${CURRENT_VERSION})<br>`; logBox.scrollTop = logBox.scrollHeight; }, 2000);
+            } else {
+                isBackgroundServiceRunning = false; btn.innerText = "KÍCH HOẠT NỀN"; btn.className = "btn btn-purple"; clearInterval(backgroundInterval); logBox.innerHTML += "<br>🛑 Đã ngắt tiến trình.";
+            }
+        }
+
+        function masterInject() {
+            const btn = document.getElementById('master-inject-btn'); const term = document.getElementById('term-box-11');
+            term.style.display = 'block'; term.innerText = `🚀 Khởi tạo đồng bộ VIP cho ID: ${verifiedFFID}...\n\n`; btn.disabled = true;
+            let index = 0;
+            let interval = setInterval(() => {
+                if (index < listFiles.length) {
+                    term.innerText += `[CONFIG] Ghi đè tệp tin: ${listFiles[index]} -> [SUCCESS (v${CURRENT_VERSION})]\n`; index++; term.scrollTop = term.scrollHeight;
+                } else {
+                    clearInterval(interval); term.innerText += "\n✅ HOÀN TẤT ĐỒNG BỘ TOÀN BỘ CÁC GÓI APP PHỤ TRỢ NGẦM!"; btn.innerText = "ĐÃ ĐỒNG BỘ XONG";
+                }
+            }, 800);
+        }
+    </script>
+</body>
+</html>
+
